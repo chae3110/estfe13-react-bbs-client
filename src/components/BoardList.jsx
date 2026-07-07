@@ -1,23 +1,84 @@
-import Table from 'react-bootstrap/Table';
-import Button from 'react-bootstrap/Button';
-import Form from 'react-bootstrap/Form';
+import Table from "react-bootstrap/Table";
+import Button from "react-bootstrap/Button";
+import Form from "react-bootstrap/Form";
 import axios from "axios";
+import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+function Board({ data, onCheckBoxChange }) {
+  return (
+    <tr>
+      <td>
+        <Form.Check
+          onChange={e => {
+            onCheckBoxChange(e.target.checked, data.id);
+          }}
+        />
+      </td>
+      <td>{data.id}</td>
+      <td>
+        <Link to={`/view/${data.id}`}>{data.title}</Link>
+      </td>
+      <td>{data.writer}</td>
+      <td>{data.date}</td>
+    </tr>
+  );
+}
 
 export default function BoardList() {
-  const simpleTest = () => {
+  console.log("BoardList 렌더");
+  const [list, setList] = useState([]);
+  const [checkList, setCheckList] = useState([]); //[9,10]
+
+  const getList = useCallback(() => {
     axios
-  .get("https://localhost:3000/", {})
-  .then((response) => {
-    console.log(response);
-    console.log(response.data);
-  })
-  .catch((error) => {
-    console.error(error);
-  })
-  .finally(() => {
-    console.log("Request completed");
-  });
-  }
+      .get(`${API_URL}/list`, {})
+      .then(response => {
+        console.log(response.data);
+        setList(response.data);
+      })
+      .catch(error => {
+        console.error(error);
+      })
+      .finally(() => {
+        console.log("요청완료");
+      });
+  }, []);
+
+  useEffect(() => {
+    getList();
+  }, [getList]);
+
+  const onCheckBoxChange = (checked, id) => {
+    setCheckList(prev => {
+      if (checked) {
+        return [...prev, id];
+      } else {
+        return prev.filter(item => item !== id);
+      }
+    });
+  };
+  const handleDelete = () => {
+    if (checkList.length === 0) {
+      alert("삭제할 글을 선택해주세요.");
+      return;
+    }
+
+    const boardIdList = checkList.join(); //[11,12]---> 11,12
+
+    axios
+      .post(`${API_URL}/deleteselect`, { boardIdList })
+      .then(response => {
+        getList();
+      })
+      .catch(error => {
+        console.error(error);
+      })
+      .finally(() => {});
+  };
+
   return (
     <>
       <Table striped bordered hover>
@@ -31,32 +92,25 @@ export default function BoardList() {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>
-              <Form.Check
-                disabled />
-            </td>
-            <td>1</td>
-            <td>안녕</td>
-            <td>ㅇㅇㅇ</td>
-            <td>2026.07.02</td>
-          </tr>
-          <tr>
-            <td>
-              <Form.Check />
-            </td>
-            <td>2</td>
-            <td>안녕</td>
-            <td>ㅎㅎㅎ</td>
-            <td>2026.07.02</td>
-          </tr>
+          {list.length === 0 ? (
+            <tr>
+              <td colSpan={5}>글이 없습니다.</td>
+            </tr>
+          ) : (
+            list.map((item, idx) => (
+              <Board key={idx} data={item} onCheckBoxChange={onCheckBoxChange} />
+            ))
+          )}
         </tbody>
       </Table>
-      <div className="d-flex gap-3 justify-content-end">
-        <Button variant="primary" onClick={simpleTest}>입력</Button>
-        <Button variant="secondary">수정</Button>
-        <Button variant="danger">삭제</Button>
+      <div className="d-flex gap-1 justify-content-end">
+        <Link to="/write" className="btn btn-primary">
+          입력
+        </Link>
+        <Button variant="danger" onClick={handleDelete}>
+          삭제
+        </Button>
       </div>
     </>
-  )
+  );
 }
